@@ -17,6 +17,13 @@ startup
         "  Use [##] anywhere in the segment name to define the kill count." + "\n" +
         "  Example: 'Level Name [10]' will split upon the 10th kill, only when on the split with that name.");
 
+    settings.Add("cgMode", false, "Split on user-defined wave numbers, and resets when you die");
+    settings.SetToolTip(
+        "cgMode",
+        "Wave splits are defined by the segment name:" + "\n" + 
+        "  Use [##] anywhere in the segment name to define the wave to split that segment on." + "\n" +
+        "  Example: 'Wave [30]' will split on the 1st frame that wave 30 begins, only when on that split.");
+
     vars.LevelKills = new Dictionary<int, int>();
 
     vars.Helper.AlertGameTime();
@@ -59,7 +66,10 @@ init
         vars.Helper["Seconds"] = sm.Make<float>("instance", "seconds");
         vars.Helper["TimerRunning"] = sm.Make<bool>("instance", "timer");
         vars.Helper["LevelInProgress"] = sm.Make<bool>("instance", "timerOnOnce");
-	vars.Helper["LevelEnd"] = sm.Make<bool>("instance", "infoSent");
+        vars.Helper["LevelEnd"] = sm.Make<bool>("instance", "infoSent");
+
+        var eg = mono.GetClass("EndlessGrid", 1);
+        vars.Helper["Wave"] = eg.Make<int>("instance","currentWave");
 
         return true;
     });
@@ -86,6 +96,15 @@ split
         int kills;
         if (vars.LevelKills.TryGetValue(timer.CurrentSplitIndex, out kills)
             && current.Kills >= kills)
+        {
+            return true;
+        }
+    }
+    if (settings["cgMode"])
+    {
+        int kills;
+        if (vars.LevelKills.TryGetValue(timer.CurrentSplitIndex, out kills)
+            && current.Wave >= kills)
         {
             return true;
         }
