@@ -17,7 +17,14 @@ startup
         "  Use [##] anywhere in the segment name to define the kill count." + "\n" +
         "  Example: 'Level Name [10]' will split upon the 10th kill, only when on the split with that name.");
 
-    vars.LevelKills = new Dictionary<int, int>();
+    settings.Add("cgMode", false, "CG runs: split on specified wave numbers (on the start of that wave), reset on run restart");
+    settings.SetToolTip(
+        "cgMode",
+        "Wave splits are defined by the segment name:" + "\n" + 
+        "  Use [##] anywhere in the segment name to define the wave to split that segment on." + "\n" +
+        "  Example: 'Wave [30]' will split on the 1st frame that wave 30 begins, only when on that split.");
+
+    vars.SegmentNumber = new Dictionary<int, int>();
 
     vars.Helper.AlertGameTime();
 }
@@ -26,7 +33,7 @@ onStart
 {
     vars.TotalGameTime = 0d;
 
-    vars.LevelKills.Clear();
+    vars.SegmentNumber.Clear();
     for (int i = 0; i < timer.Run.Count; i++)
     {
         var segment = timer.Run[i];
@@ -37,9 +44,9 @@ onStart
         int end = segment.Name.IndexOf(']', start);
         if (end == -1) continue;
 
-        int kills;
-        if (int.TryParse(segment.Name.Substring(start + 1, end - start - 1), out kills))
-            vars.LevelKills[i] = kills;
+        int segmentnum;
+        if (int.TryParse(segment.Name.Substring(start + 1, end - start - 1), out segmentnum))
+            vars.SegmentNumber[i] = segmentnum;
     }
 }
 
@@ -59,7 +66,11 @@ init
         vars.Helper["Seconds"] = sm.Make<float>("instance", "seconds");
         vars.Helper["TimerRunning"] = sm.Make<bool>("instance", "timer");
         vars.Helper["LevelInProgress"] = sm.Make<bool>("instance", "timerOnOnce");
-	vars.Helper["LevelEnd"] = sm.Make<bool>("instance", "infoSent");
+        vars.Helper["LevelEnd"] = sm.Make<bool>("instance", "infoSent");
+
+        var eg = mono.GetClass("EndlessGrid", 1);
+
+        vars.Helper["Wave"] = eg.Make<int>("instance","currentWave");
 
         return true;
     });
@@ -83,9 +94,18 @@ split
 {
     if (settings["ilMode"])
     {
-        int kills;
-        if (vars.LevelKills.TryGetValue(timer.CurrentSplitIndex, out kills)
-            && current.Kills >= kills)
+        int segmentnumber;
+        if (vars.SegmentNumber.TryGetValue(timer.CurrentSplitIndex, out segmentnum)
+            && current.Kills >= segmentnum)
+        {
+            return true;
+        }
+    }
+    if (settings["cgMode"])
+    {
+        int segmentnum;
+        if (vars.SegmentNumber.TryGetValue(timer.CurrentSplitIndex, out segmentnum)
+            && current.Wave >= segmentnum)
         {
             return true;
         }
